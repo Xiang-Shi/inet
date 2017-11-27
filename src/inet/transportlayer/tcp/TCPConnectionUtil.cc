@@ -639,7 +639,6 @@ void TCPConnection::sendSegment(uint32 bytes)
 
           // uint32 sentseq =  sentSeqQueue->findSentDataSeq(tcpseg->getSequenceNo(), tcpseg->getSequenceNo() + tcpseg->getPayloadLength());
           // tcpseg->setSendSeqNo(sentseq);
-            //test for github
 
 
            EV_DETAIL << "Retransmit Segment, the "<<tcpseg->getSendSeqNo()<<"th:["
