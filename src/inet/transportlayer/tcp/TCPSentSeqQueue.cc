@@ -89,7 +89,7 @@ uint32 TCPSentSeqQueue::findSentDataSeq(uint32 fromSeqNum, uint32 toSeqNum)
             auto i = sentSeqQueue.begin();
 
             //find the region
-            while ((i != sentSeqQueue.end()) && seqLE(i->endSeqNum, fromSeqNum))
+            while ((i != sentSeqQueue.end()) && seqLE(i->endSeqNum, fromSeqNum)) //seqLE
                 i++;
 
             if (i != sentSeqQueue.end())

@@ -633,9 +633,14 @@ void TCPConnection::sendSegment(uint32 bytes)
         if (seqLess(tcpseg->getSequenceNo(), state->snd_max))
         {
            //retransmitted segment: retrieve the first segment(head) in the sentSeqQueue, and retransmit it
-           sentSeqQueue->getHeadSegment(tcpseg);
-           bytes = tcpseg->getPayloadLength();
-           state->sentBytes = bytes;
+            sentSeqQueue->getHeadSegment(tcpseg);
+            bytes = tcpseg->getPayloadLength();
+            state->sentBytes = bytes;
+
+          // uint32 sentseq =  sentSeqQueue->findSentDataSeq(tcpseg->getSequenceNo(), tcpseg->getSequenceNo() + tcpseg->getPayloadLength());
+          // tcpseg->setSendSeqNo(sentseq);
+            //test for github
+
 
            EV_DETAIL << "Retransmit Segment, the "<<tcpseg->getSendSeqNo()<<"th:["
                    << tcpseg->getSequenceNo() << "," << tcpseg->getSequenceNo() + tcpseg->getPayloadLength()<<")"<<endl;

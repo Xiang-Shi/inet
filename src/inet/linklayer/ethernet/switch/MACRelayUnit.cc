@@ -30,8 +30,8 @@ namespace inet {
 
 Define_Module(MACRelayUnit);
 
-#define Threshold 0.950000
-#define A 50
+#define Threshold 0.000000
+#define A 45
 
 #define N 3 //number of upstream switches, varies with topology
 
