@@ -30,8 +30,8 @@ namespace inet {
 
 Define_Module(MACRelayUnit);
 
-#define Threshold 0.000000
-#define A 45
+#define Threshold 0.050000
+#define A 50
 
 #define N 3 //number of upstream switches, varies with topology
 
@@ -236,12 +236,15 @@ void MACRelayUnit::handleAndDispatchFrame(EtherFrame *frame)
         {
 
             //------------------------probability function: exponential decay----------------------------
-            //original
+            //original version 1: similar effect between theta and lambda
             //   temp = pow(exp(A*(passBackHop+1)),(utilization-Threshold));
             //   probability = (temp - 1)/ (pow(exp(A*(passBackHop+1)),(1-Threshold))-1);
-            temp = pow(exp(A*(passBackHop+1)),(Threshold - utilization));
-            probability = (temp - 1)/ (pow(exp(A*(passBackHop+1)),(Threshold - 1))-1);
-
+            //version 2: larger n_p not receive smaller probability
+           //    temp = pow(exp(A*(passBackHop+1)),(Threshold - utilization));
+           //    probability = (temp - 1)/ (pow(exp(A*(passBackHop+1)),(Threshold - 1))-1);
+            //version 3
+            temp = pow(exp(A/(passBackHop+1)),(Threshold - utilization));
+            probability = (temp - 1)/ (pow(exp(A/(passBackHop+1)),(Threshold - 1))-1);
             //------------------------probability function: exponential decay----------------------------
             dice = dblrand();
 
