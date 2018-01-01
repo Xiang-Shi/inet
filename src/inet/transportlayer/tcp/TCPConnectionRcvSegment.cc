@@ -640,7 +640,7 @@ TCPEventCode TCPConnection::processSegment1stThru8th(TCPSegment *tcpseg)
                         msg->setControlInfo(cmd);
                         sendToApp(msg);
                     } else {
-                        //SHI: RBD: discard successive segments in rcvSeqQueue
+                        //SHI: RBD: discard segments with continuous sequence number in rcvSeqQueue
                         rcvSeqQueue->extractBytesUpTo(state->rcv_nxt);
 
                         while ((msg = receiveQueue->extractBytesUpTo(state->rcv_nxt)) != nullptr) {

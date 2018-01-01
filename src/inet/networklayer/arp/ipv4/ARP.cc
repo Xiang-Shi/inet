@@ -31,6 +31,9 @@
 
 namespace inet {
 
+#define MAX_LINE    100
+
+
 simsignal_t ARP::sentReqSignal = registerSignal("sentReq");
 simsignal_t ARP::sentReplySignal = registerSignal("sentReply");
 
@@ -54,7 +57,79 @@ Define_Module(ARP);
 ARP::ARP()
 {
 }
+/**
+ * Function reads from a file stream pointed to by 'fp' and stores characters
+ * until the '\n' or EOF character is found, the resultant string is returned.
+ * Note that neither '\n' nor EOF character is stored to the resultant string,
+ * also note that if on a line containing useful data that EOF occurs, then
+ * that line will not be read in, hence must terminate file with unused line.
+ */
+static char *fgetline(FILE *fp)
+{
+    // alloc buffer and read a line
+    char *line = new char[MAX_LINE];
+    if (fgets(line, MAX_LINE, fp) == nullptr) {
+        delete[] line;
+        return nullptr;
+    }
 
+    // chop CR/LF
+    line[MAX_LINE - 1] = '\0';
+    int len = strlen(line);
+    while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r'))
+        line[--len] = '\0';
+
+    return line;
+}
+void ARP::readARPCache(const char *fileName)
+{
+
+    FILE *fp = fopen(fileName, "r");
+      if (fp == nullptr)
+          throw cRuntimeError("cannot open address table file `%s'", fileName);
+
+      //  Syntax of the file goes as:
+      //  IP address, MAC address
+      //
+      //  Each iteration of the loop reads in an entire line i.e. up to '\n' or EOF characters
+      //  and uses strtok to extract tokens from the resulting string
+
+      char *line;
+      for (int lineno = 0; (line = fgetline(fp)) != nullptr; delete [] line)
+      {
+           lineno++;
+
+           // lines beginning with '#' are treated as comments
+           if (line[0] == '#')
+               continue;
+
+           // scan in Switch ID
+           char *ipAddress = strtok(line, " \t");
+           // scan in dest ID
+           char *macAddress = strtok(nullptr, " \t");
+
+           // empty line?
+           if (!ipAddress)
+               continue;
+
+           ARPCacheEntry *entry = new ARPCacheEntry();
+           entry->owner = this;
+
+           entry->pending = false;
+           entry->timer = nullptr;
+           entry->numRetries = 0;
+           entry->lastUpdate = simTime();
+           entry->macAddress = MACAddress(macAddress);
+
+           InterfaceEntry *ie; // = ift->get...
+           entry->ie = ie;
+
+           auto where = arpCache.insert(arpCache.begin(), std::make_pair(IPv4Address(ipAddress), entry));
+           entry->myIter = where;
+      }
+      fclose(fp);
+
+}
 void ARP::initialize(int stage)
 {
     cSimpleModule::initialize(stage);
@@ -82,6 +157,15 @@ void ARP::initialize(int stage)
         rt = getModuleFromPar<IIPv4RoutingTable>(par("routingTableModule"), this);
 
         isUp = isNodeUp();
+
+        //SHI: begin: initialize arpCache
+        // To turn it off, set addressTableFile to empty string
+         const char *arpCacheFile = par("arpCacheFile");
+         if (arpCacheFile && *arpCacheFile)
+             readARPCache(arpCacheFile);
+
+         WATCH_PTRMAP(arpCache);
+         //SHI: end
     }
 }
 
@@ -146,7 +230,8 @@ bool ARP::handleOperationStage(LifecycleOperation *operation, int stage, IDoneCa
 
 void ARP::start()
 {
-    ASSERT(arpCache.empty());
+    //SHI: assign arp cache entry to avoid arp broadcast
+   // ASSERT(arpCache.empty());
     isUp = true;
 }
 

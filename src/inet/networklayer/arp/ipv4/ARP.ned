@@ -46,6 +46,7 @@ import inet.networklayer.contract.IARP;
 simple ARP like IARP
 {
     parameters:
+        string arpCacheFile = default(""); // SHI: initiate ARP mapping
         string interfaceTableModule;   // The path to the InterfaceTable module
         string routingTableModule;
         double retryTimeout @unit("s") = default(1s); // number seconds ARP waits between retries to resolve an IPv4 address
