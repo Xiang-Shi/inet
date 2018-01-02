@@ -168,9 +168,8 @@ void EtherEncap::processFrameFromMAC(EtherFrame *frame)
     }
     else
     {
-        //SHI: check if server received passed back frames, we don't want this happen
+        //SHI: check if sender received passed back frames destined for itself, this is bi-directional passback, we don't want this happen
         if (strcmp(getParentModule()->getParentModule()->getNedTypeName(),"inet.node.inet.StandardHost") == 0
-                  && strcmp(getParentModule()->getParentModule()->getFullName(),"client") != 0
                   && frame->getPassBackNum() > 0 )
         {
             totalReversePassedBack++;

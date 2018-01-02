@@ -398,9 +398,10 @@ void TCPBaseAlg::rttMeasurementComplete(simtime_t tSent, simtime_t tAcked)
         rto = MIN_REXMIT_TIMEOUT;
 
     //=======SHI modify begin===========
-    rto = MAX_REXMIT_TIMEOUT; //add this line
-    state->rexmit_timeout = rto;
+   // rto = MAX_REXMIT_TIMEOUT; //add this line
     //=======SHI modify end===========
+
+    state->rexmit_timeout = rto;
 
     // record statistics
     EV_DETAIL << "Measured RTT=" << (newRTT * 1000) << "ms, updated SRTT=" << (srtt * 1000)
