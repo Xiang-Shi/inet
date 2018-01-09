@@ -42,14 +42,7 @@ class INET_API MACRelayUnit : public cSimpleModule, public ILifecycle
 
     // Parameters for statistics collection
     double maxUtilOfOutport = 0;
-    long maxPBFreqOfFrame = 0;
-    long maxHopOfFrame = 0;
-    long maxPBHopOfFrame = 0;
-    long totalFrameNum = 0;
-    long numFramesOfHop0 = 0;
-    long numFramesOfHop1 = 0;
-    long numFramesOfHop2 = 0;
-    long numFramesOfHop3 = 0;
+
 
     long numProcessedFrames = 0;
     long numDiscardedFrames = 0;
@@ -57,10 +50,10 @@ class INET_API MACRelayUnit : public cSimpleModule, public ILifecycle
     bool isOperational = false;    // for lifecycle
 
     //Vector Parameters for statistics collection
-    cLongHistogram maxPBHopDistr;
-    cLongHistogram totalHopNumDistr;
-    static simsignal_t maxPBHopSignal;
-    static simsignal_t totalHopNumSignal;
+  //  cLongHistogram maxPBHopDistr;
+  //  cLongHistogram totalHopNumDistr;
+   // static simsignal_t maxPBHopSignal;
+   // static simsignal_t totalHopNumSignal;
 
 
   protected:
@@ -80,7 +73,7 @@ class INET_API MACRelayUnit : public cSimpleModule, public ILifecycle
      * The message pointer should not be referenced any more after this call.
      */
     virtual void broadcastFrame(EtherFrame *frame, int inputport);
-    virtual void collectStatistics(EtherFrame *frame);
+   // virtual void collectStatistics(EtherFrame *frame);
 
     /**
      * Calls handleIncomingFrame() for frames arrived from outside,

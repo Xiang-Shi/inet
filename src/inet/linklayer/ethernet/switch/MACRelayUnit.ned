@@ -22,11 +22,11 @@ simple MACRelayUnit like IMACRelayUnit
       parameters:
         @display("i=block/switch");
         string macTablePath = default("^.macTable"); // The path to the MACAddressTable module
-        @signal[maxPBHop](type=long);
-        @signal[totalHopNum](type=long);
+       // @signal[maxPBHop](type=long);
+       // @signal[totalHopNum](type=long);
         
-        @statistic[maxPBHop](title="pass back hop distribution"; record=histogram; interpolationmode=none);
-        @statistic[totalHopNum](title="total hop num distribution"; record=histogram; interpolationmode=none);
+       // @statistic[maxPBHop](title="pass back hop distribution"; record=histogram; interpolationmode=none);
+       // @statistic[totalHopNum](title="total hop num distribution"; record=histogram; interpolationmode=none);
         
     gates:
         input ifIn[] @labels(EtherFrame);

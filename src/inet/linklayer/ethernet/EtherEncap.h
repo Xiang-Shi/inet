@@ -36,15 +36,17 @@ class INET_API EtherEncap : public cSimpleModule
     int seqNum;
 
     // statistics
-    long totalReversePassedBack;   //SHI: total received number of frames with reverse passback
+    long totalReversePassedBack;   //SHI: total number of normally received bounced frames, defined to check bi-directional pass back
     long totalFromHigherLayer;    // total number of packets received from higher layer
     long totalFromMAC;    // total number of frames received from MAC
     long totalPauseSent;    // total number of PAUSE frames sent
     static simsignal_t encapPkSignal;
     static simsignal_t decapPkSignal;
     static simsignal_t pauseSentSignal;
-    static simsignal_t reversePassbackSignal;
+    static simsignal_t reversePassbackSignal; //SHI
+    static simsignal_t totalHopSignal; //SHI: record the totalHop of received frames
     bool useSNAP;    // true: generate EtherFrameWithSNAP, false: generate EthernetIIFrame
+    int numOfBouncedPackets =0;//SHI: the total number of received packets which is bounced back all the way to this source host;
 
   protected:
     virtual void initialize() override;

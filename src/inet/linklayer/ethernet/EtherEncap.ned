@@ -46,12 +46,13 @@ simple EtherEncap like IEtherEncap
         @signal[decapPk](type=cPacket);
         @signal[pauseSent](type=long); // pause units
         @signal[reversePassback](type=long); //SHI: To check if the reverse path has passback happend
+        @signal[totalHop](type=long); // SHI: collect the distribution of total hop of frames
         
         @statistic[encapPk](title="packets encapsulated";source=encapPk; record=count,"sum(packetBytes)","vector(packetBytes)"; interpolationmode=none);
         @statistic[decapPk](title="packets decapsulated";source=decapPk; record=count,"sum(packetBytes)","vector(packetBytes)"; interpolationmode=none);
         @statistic[pauseSent](title="pause sent";record=count,sum,vector);
-        @statistic[reversePassback](title="SHI: reverse passback number of frame"; record=histogram; interpolationmode=none);
-        
+        @statistic[reversePassback](title="SHI: received number of passback frame"; record=histogram; interpolationmode=none);
+        @statistic[totalHop](title="SHI: totalHop Distribution"; record=histogram; interpolationmode=none);
     gates:
         input upperLayerIn @labels(Ieee802Ctrl/down); // higher layer
         output upperLayerOut @labels(Ieee802Ctrl/up); // higher layer

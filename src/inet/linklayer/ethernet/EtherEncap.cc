@@ -32,20 +32,21 @@ simsignal_t EtherEncap::encapPkSignal = registerSignal("encapPk");
 simsignal_t EtherEncap::decapPkSignal = registerSignal("decapPk");
 simsignal_t EtherEncap::pauseSentSignal = registerSignal("pauseSent");
 simsignal_t EtherEncap:: reversePassbackSignal = registerSignal("reversePassback");
-
+simsignal_t EtherEncap::totalHopSignal = registerSignal("totalHop");
 
 void EtherEncap::initialize()
 {
     seqNum = 0;
     WATCH(seqNum);
 
-    totalFromHigherLayer = totalFromMAC = totalPauseSent = 0;
+    totalReversePassedBack = totalFromHigherLayer = totalFromMAC = totalPauseSent = 0;
     useSNAP = par("useSNAP").boolValue();
 
     WATCH(totalReversePassedBack);
     WATCH(totalFromHigherLayer);
     WATCH(totalFromMAC);
     WATCH(totalPauseSent);
+    WATCH(numOfBouncedPackets);
 }
 
 void EtherEncap::handleMessage(cMessage *msg)
@@ -150,6 +151,7 @@ void EtherEncap::processFrameFromMAC(EtherFrame *frame)
     if (strcmp(getParentModule()->getParentModule()->getNedTypeName(),"inet.node.inet.StandardHost") == 0
            && !mac->getMACAddress().equals(frame->getDest())  && frame->getPassBackNum() > 0 )
     {
+        numOfBouncedPackets++;
 
         //Reduce passBackHop: only reduce when >=1
         if (passBackHop >= 1) {
@@ -169,11 +171,19 @@ void EtherEncap::processFrameFromMAC(EtherFrame *frame)
     else
     {
         //SHI: check if sender received passed back frames destined for itself, this is bi-directional passback, we don't want this happen
-        if (strcmp(getParentModule()->getParentModule()->getNedTypeName(),"inet.node.inet.StandardHost") == 0
-                  && frame->getPassBackNum() > 0 )
-        {
-            totalReversePassedBack++;
-            emit(reversePassbackSignal,totalReversePassedBack);
+        if (strcmp(getParentModule()->getParentModule()->getNedTypeName(),"inet.node.inet.StandardHost") == 0)
+        { // for EtherEncap module in the hosts, when they are processing frames from the network...
+
+            if(frame->getPassBackNum() > 0)
+            {//record the number of received bounced frames
+                totalReversePassedBack++;
+                emit(reversePassbackSignal,totalReversePassedBack);
+            }
+
+            // collect statistics of the frames received in the host
+            emit(totalHopSignal, frame->getTotalHopNum());
+
+
         }
 
         // decapsulate and attach control info

@@ -54,7 +54,7 @@ void TCPTahoeNoCongestionControl::recalculateSlowStartThreshold()
 
 void TCPTahoeNoCongestionControl::processRexmitTimer(TCPEventCode& event)
 {
- /*   TCPTahoeRenoFamily::processRexmitTimer(event);
+    TCPTahoeRenoFamily::processRexmitTimer(event);
 
     if (event == TCP_E_ABORT)
         return;
@@ -73,7 +73,7 @@ void TCPTahoeNoCongestionControl::processRexmitTimer(TCPEventCode& event)
 
      // Tahoe retransmits only one segment at the front of the queue
      conn->retransmitOneSegment(true);
-     */
+
 }
 
 void TCPTahoeNoCongestionControl::receivedDataAck(uint32 firstSeqAcked)

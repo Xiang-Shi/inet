@@ -30,13 +30,13 @@ namespace inet {
 
 Define_Module(MACRelayUnit);
 
-#define Threshold 0.500000
-#define A 1
+#define Threshold 0.1000
+#define A 25
 
 #define N 3 //number of upstream switches, varies with topology
 
-simsignal_t MACRelayUnit:: maxPBHopSignal = registerSignal("maxPBHop");
-simsignal_t MACRelayUnit:: totalHopNumSignal =registerSignal("totalHopNum");
+//simsignal_t MACRelayUnit:: maxPBHopSignal = registerSignal("maxPBHop");
+//simsignal_t MACRelayUnit:: totalHopNumSignal =registerSignal("totalHopNum");
 
 int MACRelayUnit::max(int a,int b,int c,int d,int e,int f)
 {
@@ -95,21 +95,14 @@ void MACRelayUnit::initialize(int stage)
         numProcessedFrames = numDiscardedFrames = 0;
         addressTable = check_and_cast<IMACAddressTable *>(getParentModule()->getSubmodule("macTable"));
 
-        maxPBHopDistr.setNumCells(8);
-        totalHopNumDistr.setCellSize(1);
-        totalHopNumDistr.setRange(0,100);
+       // maxPBHopDistr.setNumCells(8);
+       // totalHopNumDistr.setCellSize(1);
+       // totalHopNumDistr.setRange(0,100);
 
         switchName = getParentModule()->getFullName();
 
         WATCH(PassBackFreq);
-        WATCH(numFramesOfHop0);
-        WATCH(numFramesOfHop1);
-        WATCH(numFramesOfHop2);
-        WATCH(numFramesOfHop3);
-        WATCH(maxPBFreqOfFrame);
-        WATCH(maxHopOfFrame);
-        WATCH(maxPBHopOfFrame);
-        WATCH(totalFrameNum);
+
         WATCH(numProcessedFrames);
         WATCH(numDiscardedFrames);
     }
@@ -133,38 +126,18 @@ void MACRelayUnit::handleMessage(cMessage *msg)
 }
 
 // method used to collect statistics at the bottom switch(currently switch7)
-void MACRelayUnit::collectStatistics(EtherFrame *frame)
-{
-    //count total frame number
-    totalFrameNum++;
-
-    //count pass back hop distribution
-    if (frame->getMaxPassBackHop() == 0)
-        numFramesOfHop0++;
-    else if (frame->getMaxPassBackHop() == 1)
-        numFramesOfHop1++;
-    else if (frame->getMaxPassBackHop() == 2)
-        numFramesOfHop2++;
-    else if (frame->getMaxPassBackHop() == 3)
-        numFramesOfHop3++;
-
-    //collect max Pass Back Hop distribution
-    maxPBHopDistr.collect(frame->getMaxPassBackHop());
-    emit(maxPBHopSignal,frame->getMaxPassBackHop());
-
-    //collect total hop num distribution and calculate average hop
-    totalHopNumDistr.collect(frame->getTotalHopNum());
-    emit(totalHopNumSignal,frame->getTotalHopNum());
-
-
-    if (maxPBFreqOfFrame < frame->getPassBackNum())
-        maxPBFreqOfFrame = frame->getPassBackNum();
-    if (maxPBHopOfFrame < frame->getMaxPassBackHop())
-        maxPBHopOfFrame = frame->getMaxPassBackHop();
-    if (maxHopOfFrame < frame->getTotalHopNum())
-        maxHopOfFrame = frame->getTotalHopNum();
-
-}
+//void MACRelayUnit::collectStatistics(EtherFrame *frame)
+//{
+//
+//    //collect max Pass Back Hop distribution
+//    maxPBHopDistr.collect(frame->getMaxPassBackHop());
+//    emit(maxPBHopSignal,frame->getMaxPassBackHop());
+//
+//    //collect total hop num distribution and calculate average hop
+//    totalHopNumDistr.collect(frame->getTotalHopNum());
+//    emit(totalHopNumSignal,frame->getTotalHopNum());
+//
+//}
 
 void MACRelayUnit::handleAndDispatchFrame(EtherFrame *frame)
 {
@@ -243,8 +216,8 @@ void MACRelayUnit::handleAndDispatchFrame(EtherFrame *frame)
            //    temp = pow(exp(A*(passBackHop+1)),(Threshold - utilization));
            //    probability = (temp - 1)/ (pow(exp(A*(passBackHop+1)),(Threshold - 1))-1);
             //version 3
-            temp = pow(exp(A/(passBackHop+1)),(Threshold - utilization));
-            probability = (temp - 1)/ (pow(exp(A/(passBackHop+1)),(Threshold - 1))-1);
+            temp = pow(exp(A/(passBackNum+1)),(Threshold - utilization));
+            probability = (temp - 1)/ (pow(exp(A/(passBackNum+1)),(Threshold - 1))-1);
             //------------------------probability function: exponential decay----------------------------
             dice = dblrand();
 
@@ -272,12 +245,11 @@ void MACRelayUnit::handleAndDispatchFrame(EtherFrame *frame)
                 totalHopNum++;
                 frame->setTotalHopNum(totalHopNum);
 
-                //count the number of passed back frames in this switch
-                if(passBackNum > 0)
-                    PassBackFreq++;
-
                 EV << "Passing back frame " << frame << " with src address " << frame->getSrc()
                                      <<" at the "<<frame->getPassBackHop() <<" hop "<< " to port " << outputport << endl;
+
+                //count the number of passed back frames in this switch
+                PassBackFreq++;
 
                 //pass back frame
                 send(frame, "ifOut", outputport);
@@ -297,11 +269,11 @@ void MACRelayUnit::handleAndDispatchFrame(EtherFrame *frame)
                 totalHopNum++;
                 frame->setTotalHopNum(totalHopNum);
 
-                //collect statistics before sending to receiver
-                if(strcmp(switchName,"etherSwitch7")==0 && outputport == 3)
-                {
-                    collectStatistics(frame);
-                }
+                //collect statistics before sending to receiver, move it to the EtherEncap module
+//                if(strcmp(switchName,"etherSwitch7")==0 && outputport == 3)
+//                {
+//                    collectStatistics(frame);
+//                }
 
                 //send frame
                 send(frame, "ifOut", outputport);
@@ -322,10 +294,10 @@ void MACRelayUnit::handleAndDispatchFrame(EtherFrame *frame)
             frame->setTotalHopNum(totalHopNum);
 
             //collect statistics before sending to receiver
-            if (strcmp(switchName, "etherSwitch7") == 0 && outputport == 3)
-            {
-                collectStatistics(frame);
-            }
+//            if (strcmp(switchName, "etherSwitch7") == 0 && outputport == 3)
+//            {
+//                collectStatistics(frame);
+//            }
 
             //send frame
             send(frame, "ifOut", outputport);
@@ -395,8 +367,8 @@ void MACRelayUnit::finish()
     recordScalar("processed frames", numProcessedFrames);
     recordScalar("discarded frames", numDiscardedFrames);
 
-    maxPBHopDistr.recordAs("Pass back hop distribution");
-    totalHopNumDistr.recordAs("Total hop num distribution");
+   // maxPBHopDistr.recordAs("Pass back hop distribution");
+   // totalHopNumDistr.recordAs("Total hop num distribution");
 
 
 }
