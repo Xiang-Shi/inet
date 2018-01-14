@@ -406,7 +406,15 @@ void TCPConnection::selectInitialSeqNum()
     // set the initial send sequence number
     state->iss = (unsigned long)fmod(SIMTIME_DBL(simTime()) * 250000.0, 1.0 + (double)(unsigned)0xffffffffUL) & 0xffffffffUL;
 
+    //SHI:
+    EV_DETAIL << "selectInitialSeqNum: before performing state->snd_una = state->snd_nxt = state->snd_max = state->iss;,"
+            <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
     state->snd_una = state->snd_nxt = state->snd_max = state->iss;
+
+    //SHI:
+    EV_DETAIL << "selectInitialSeqNum: after performing state->snd_una = state->snd_nxt = state->snd_max = state->iss;,"
+            <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
 
     sendQueue->init(state->iss + 1);    // + 1 is for SYN
     sentSeqQueue->init(state->iss + 1);    // + 1 is for SYN
@@ -480,7 +488,15 @@ void TCPConnection::sendSyn()
     updateRcvWnd();
     tcpseg->setWindow(state->rcv_wnd);
 
+    //SHI:
+    EV_DETAIL << "sendSyn: before performing state->snd_max = state->snd_nxt = state->iss + 1;,"
+            <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
     state->snd_max = state->snd_nxt = state->iss + 1;
+
+    //SHI:
+     EV_DETAIL << "sendSyn: after performing state->snd_max = state->snd_nxt = state->iss + 1;,"
+             <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
 
     // write header options
     writeHeaderOptions(tcpseg);
@@ -500,7 +516,15 @@ void TCPConnection::sendSynAck()
     updateRcvWnd();
     tcpseg->setWindow(state->rcv_wnd);
 
+    //SHI:
+     EV_DETAIL << "sendSynAck: before performing state->snd_max = state->snd_nxt = state->iss + 1;,"
+             <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
     state->snd_max = state->snd_nxt = state->iss + 1;
+
+    //SHI:
+      EV_DETAIL << "sendSynAck: after performing state->snd_max = state->snd_nxt = state->iss + 1;,"
+              <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
 
     // write header options
     writeHeaderOptions(tcpseg);
@@ -623,19 +647,46 @@ void TCPConnection::sendSegment(uint32 bytes)
 
     state->sentBytes = bytes;
 
+    //SHI:
+    EV_DETAIL << "sendSegment: before performing createSegmentWithBytes(state->snd_nxt, bytes);,"
+                                <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max
+                                <<", state->sentBytes="<<state->sentBytes<<endl;
+
     // send one segment of 'bytes' bytes from snd_nxt, and advance snd_nxt
     TCPSegment *tcpseg = sendQueue->createSegmentWithBytes(state->snd_nxt, bytes);
 
+    //SHI:
+    EV_DETAIL << "sendSegment: after performing createSegmentWithBytes(state->snd_nxt, bytes);,"
+                                <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max
+                                <<", state->sentBytes="<<state->sentBytes<<endl;
 
-    //**SHI: Check whether the segment (with data) is first sent
+//==========================modify start======================================================
+    //SHI: Check whether the segment (with data) is first sent
     if (tcpseg->getPayloadLength() > 0)
     {
         if (seqLess(tcpseg->getSequenceNo(), state->snd_max))
         {
-           //retransmitted segment: retrieve the first segment(head) in the sentSeqQueue, and retransmit it
-            sentSeqQueue->getHeadSegment(tcpseg);
+            //SHI:
+            EV_DETAIL << "sendSegment: seqLess(tcpseg->getSequenceNo(), state->snd_max),"
+                                        <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max
+                                        <<", state->sentBytes="<<state->sentBytes
+                                        <<"tcpseg=["<<tcpseg->getSequenceNo()<<",l="<<tcpseg->getPayloadLength()<<")"<<endl;
+
+            //If under RTO, loop is called from sendData() to retransmit from snd_una to snd_max,
+            //mind the limit of "bytes"(caculated from snd_wnd etc.)
+            //If under fast retransmit, only retransmit one segment
+            //retransmitted segment: retrieve the segment(head) according to snd_nxt, and retransmit it
+            sentSeqQueue->getSegment(tcpseg, state->snd_nxt);
             bytes = tcpseg->getPayloadLength();
             state->sentBytes = bytes;
+
+            //SHI:
+            EV_DETAIL << "sendSegment: after sentSeqQueue->getSegment(tcpseg, state->snd_nxt);"
+                                        <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max
+                                        <<", state->sentBytes="<<state->sentBytes
+                                        <<"tcpseg=["<<tcpseg->getSequenceNo()<<",l="<<tcpseg->getPayloadLength()<<")"<<endl;
+
+
 
           // uint32 sentseq =  sentSeqQueue->findSentDataSeq(tcpseg->getSequenceNo(), tcpseg->getSequenceNo() + tcpseg->getPayloadLength());
           // tcpseg->setSendSeqNo(sentseq);
@@ -667,6 +718,7 @@ void TCPConnection::sendSegment(uint32 bytes)
 
     }
 
+//=========================modify end========================================a
 
 
     // if sack_enabled copy region of tcpseg to rexmitQueue
@@ -700,6 +752,10 @@ void TCPConnection::sendSegment(uint32 bytes)
     tcpseg->setHeaderLength(tcpseg_temp->getHeaderLength());
     delete tcpseg_temp;
 
+    //SHI:
+    EV_DETAIL << "SendSegment, :["
+                      << tcpseg->getSequenceNo() << "," << tcpseg->getSequenceNo() + tcpseg->getPayloadLength()<<")"<<endl;
+
     // send it
     sendToIP(tcpseg);
 
@@ -717,7 +773,18 @@ bool TCPConnection::sendData(bool fullSegmentsOnly, uint32 congestionWindow)
 {
     // we'll start sending from snd_max, if not after RTO
     if (!state->afterRto)
+    {
+        //SHI:
+        EV_DETAIL << "sendData: !state->afterRto, before performing state->snd_nxt = state->snd_max;,"
+                  <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         state->snd_nxt = state->snd_max;
+
+        //SHI:
+        EV_DETAIL << "sendData:  !state->afterRto, after performing state->snd_nxt = state->snd_max;,"
+                  <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
+    }
 
     uint32 old_highRxt = 0;
 
@@ -768,6 +835,10 @@ bool TCPConnection::sendData(bool fullSegmentsOnly, uint32 congestionWindow)
     EV_INFO << "Will send " << bytesToSend << " bytes (effectiveWindow " << effectiveWin
             << ", in buffer " << buffered << " bytes)\n";
 
+    //SHI:
+    EV_DETAIL << "sendData: before performing uint32 old_snd_nxt = state->snd_nxt;,"
+                          <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
     uint32 old_snd_nxt = state->snd_nxt;
 
     ASSERT(bytesToSend > 0);
@@ -776,7 +847,17 @@ bool TCPConnection::sendData(bool fullSegmentsOnly, uint32 congestionWindow)
     // make agressive use of the window until the last byte
     while (bytesToSend > 0) {
         ulong bytes = std::min(bytesToSend, state->snd_mss);
+
+        //SHI:
+        EV_DETAIL << "sendData: TCP_SENDFRAGMENTS before performing sendSegment(bytes);,"
+                               <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         sendSegment(bytes);
+
+        //SHI:
+        EV_DETAIL << "sendData: TCP_SENDFRAGMENTS after performing sendSegment(bytes);,"
+                                 <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         bytesToSend -= state->sentBytes;
     }
 #else // ifdef TCP_SENDFRAGMENTS
@@ -785,13 +866,42 @@ bool TCPConnection::sendData(bool fullSegmentsOnly, uint32 congestionWindow)
       // 2 segments (1000 payload + 12 optionsHeader and 10 payload + 12 optionsHeader)
       // FIXME this should probably obey Nagle's alg -- to be checked
     if (bytesToSend <= state->snd_mss) {
+        //SHI:
+        EV_DETAIL << "sendData: bytesToSend <= state->snd_mss before performing sendSegment(bytesToSend);,"
+                                 <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max
+                                 <<", bytesToSend="<<bytesToSend<<", state->sentBytes="<<state->sentBytes<<endl;
+
         sendSegment(bytesToSend);
-        bytesToSend -= state->sentBytes;
+        if(bytesToSend >= state->sentBytes) //SHI: might become larger than calculated because want to send the original segment
+            bytesToSend -= state->sentBytes;
+        else
+            bytesToSend = 0; //SHI
+
+        //SHI:
+        EV_DETAIL << "sendData: bytesToSend <= state->snd_mss after performing sendSegment(bytesToSend);,"
+                                    <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max
+                                    <<", bytesToSend="<<bytesToSend<<", state->sentBytes="<<state->sentBytes<<endl;
+
     }
     else {    // send whole segments only (nagle_enabled)
         while (bytesToSend >= effectiveMaxBytesSend) {
+
+            //SHI:
+            EV_DETAIL << "sendData: bytesToSend >= effectiveMaxBytesSend before performing sendSegment(bytesToSend);,"
+                                        <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max
+                                        <<", bytesToSend="<<bytesToSend<<", state->sentBytes="<<state->sentBytes<<endl;
             sendSegment(state->snd_mss);
-            bytesToSend -= state->sentBytes;
+
+            if(bytesToSend >= state->sentBytes) //SHI
+                bytesToSend -= state->sentBytes;
+            else
+                bytesToSend = 0; //SHI
+
+            //SHI:
+            EV_DETAIL << "sendData: bytesToSend >= effectiveMaxBytesSend after performing sendSegment(bytesToSend);,"
+                                        <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max
+                                        <<", bytesToSend="<<bytesToSend<<", state->sentBytes="<<state->sentBytes<<endl;
+
         }
     }
 
@@ -800,7 +910,18 @@ bool TCPConnection::sendData(bool fullSegmentsOnly, uint32 congestionWindow)
 
     if (bytesToSend == buffered && buffered != 0) // last segment?
     {
+        //SHI:
+        EV_DETAIL << "sendData: bytesToSend == buffered && buffered != 0 before performing sendSegment(bytesToSend);,"
+                                    <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max
+                                    <<", bytesToSend="<<bytesToSend<<", state->sentBytes="<<state->sentBytes<<endl;
+
         sendSegment(bytesToSend);
+
+        //SHI:
+        EV_DETAIL << "sendData: bytesToSend == buffered && buffered != 0 after performing sendSegment(bytesToSend);,"
+                                    <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max
+                                    <<", bytesToSend="<<bytesToSend<<", state->sentBytes="<<state->sentBytes<<endl;
+
        // state->snd_seg = 0;                     //SHI:reset send segment sequence counter for next send
     }
     else if (bytesToSend > 0)
@@ -811,7 +932,13 @@ bool TCPConnection::sendData(bool fullSegmentsOnly, uint32 congestionWindow)
     // but we'll need snd_max to check validity of ACKs -- they must ack
     // something we really sent)
     if (seqGreater(state->snd_nxt, state->snd_max))
+    {
+        //SHI:
+        EV_DETAIL << "sendData: seqGreater(state->snd_nxt, state->snd_max), before performing state->snd_max = state->snd_nxt;,"
+                         <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         state->snd_max = state->snd_nxt;
+    }
 
     if (unackedVector)
         unackedVector->record(state->snd_max - state->snd_una);
@@ -833,6 +960,10 @@ bool TCPConnection::sendData(bool fullSegmentsOnly, uint32 congestionWindow)
 bool TCPConnection::sendProbe()
 {
     // we'll start sending from snd_max
+    //SHI:
+        EV_DETAIL << "sendProbe1: before performing  state->snd_nxt = state->snd_max;,"
+                         <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
     state->snd_nxt = state->snd_max;
 
     // check we have 1 byte to send
@@ -849,6 +980,11 @@ bool TCPConnection::sendProbe()
     // remember highest seq sent (snd_nxt may be set back on retransmission,
     // but we'll need snd_max to check validity of ACKs -- they must ack
     // something we really sent)
+
+    //SHI:
+    EV_DETAIL << "sendProbe2: before performing  state->snd_max = state->snd_nxt;,"
+                          <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
     state->snd_max = state->snd_nxt;
 
     if (unackedVector)
@@ -879,12 +1015,33 @@ void TCPConnection::retransmitOneSegment(bool called_at_rto)
 
     // FIN (without user data) needs to be resent
     if (bytes == 0 && state->send_fin && state->snd_fin_seq == sendQueue->getBufferEndSeq()) {
+
+        //SHI:
+        EV_DETAIL << "retransmitOneSegment: before performing  state->snd_max = sendQueue->getBufferEndSeq();,"
+                               <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         state->snd_max = sendQueue->getBufferEndSeq();
+
+        //SHI:
+         EV_DETAIL << "retransmitOneSegment: after performing  state->snd_max = sendQueue->getBufferEndSeq();,"
+                                <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         EV_DETAIL << "No outstanding DATA, resending FIN, advancing snd_nxt over the FIN\n";
         state->snd_nxt = state->snd_max;
         sendFin();
         tcpAlgorithm->segmentRetransmitted(state->snd_nxt, state->snd_nxt + 1);
+
+        //SHI:
+           EV_DETAIL << "retransmitOneSegment: before performing  state->snd_max = ++state->snd_nxt;,"
+                                  <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         state->snd_max = ++state->snd_nxt;
+
+        //SHI:
+             EV_DETAIL << "retransmitOneSegment: after performing  state->snd_max = ++state->snd_nxt;,"
+                     <<" state->snd_una="<<state->snd_una
+                                    <<", state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
 
         if (unackedVector)
             unackedVector->record(state->snd_max - state->snd_una);
@@ -896,7 +1053,18 @@ void TCPConnection::retransmitOneSegment(bool called_at_rto)
         if(retransmissionVector)
             retransmissionVector->record(state->retransmission_num);
 
+        //SHI:
+        EV_DETAIL << "retransmitOneSegment: before performing   sendSegment(bytes);,"
+                <<" state->snd_una="<<state->snd_una
+                               <<", state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         sendSegment(bytes);
+
+        //SHI:
+        EV_DETAIL << "retransmitOneSegment: after performing  sendSegment(bytes);,"
+                <<" state->snd_una="<<state->snd_una
+                               <<", state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         tcpAlgorithm->segmentRetransmitted(state->snd_una, state->snd_nxt);
 
         if (!called_at_rto) {
@@ -926,11 +1094,30 @@ void TCPConnection::retransmitData()
 
     // FIN (without user data) needs to be resent
     if (bytesToSend == 0 && state->send_fin && state->snd_fin_seq == sendQueue->getBufferEndSeq()) {
+        //SHI:
+         EV_DETAIL << "retransmitData: before performing  state->snd_max = sendQueue->getBufferEndSeq();,"
+                                <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         state->snd_max = sendQueue->getBufferEndSeq();
+
+        //SHI:
+          EV_DETAIL << "retransmitData: after performing  state->snd_max = sendQueue->getBufferEndSeq();,"
+                                 <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         EV_DETAIL << "No outstanding DATA, resending FIN, advancing snd_nxt over the FIN\n";
         state->snd_nxt = state->snd_max;
         sendFin();
+
+        //SHI:
+        EV_DETAIL << "retransmitData: before performing  state->snd_max = ++state->snd_nxt;,"
+                                       <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         state->snd_max = ++state->snd_nxt;
+
+        //SHI:
+         EV_DETAIL << "retransmitData: after performing  state->snd_max = ++state->snd_nxt;,"
+                                        <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
 
         if (unackedVector)
             unackedVector->record(state->snd_max - state->snd_una);
@@ -1457,6 +1644,12 @@ void TCPConnection::sendOneNewSegment(bool fullSegmentsOnly, uint32 congestionWi
 
                 if (bytes >= state->snd_mss || (!fullSegmentsOnly && bytes > 0)) {
                     uint32 old_snd_nxt = state->snd_nxt;
+
+                    //SHI:
+                     EV_DETAIL << "sendOneNewSegment: before performing   state->snd_nxt = state->snd_max;,"
+                                                    <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
+
                     // we'll start sending from snd_max
                     state->snd_nxt = state->snd_max;
 
@@ -1464,7 +1657,13 @@ void TCPConnection::sendOneNewSegment(bool fullSegmentsOnly, uint32 congestionWi
                     sendSegment(bytes);
 
                     if (seqGreater(state->snd_nxt, state->snd_max))
+                    {
+                        //SHI:
+                        EV_DETAIL << "sendOneNewSegment: seqGreater(state->snd_nxt, state->snd_max), before performing   state->snd_max = state->snd_nxt;,"
+                                                         <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
                         state->snd_max = state->snd_nxt;
+                    }
 
                     if (unackedVector)
                         unackedVector->record(state->snd_max - state->snd_una);

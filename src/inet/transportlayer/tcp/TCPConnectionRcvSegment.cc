@@ -499,7 +499,7 @@ TCPEventCode TCPConnection::processSegment1stThru8th(TCPSegment *tcpseg)
 
                 uint32 old_usedRcvBuffer = state->usedRcvBuffer;
 
-                //=====================================================================================
+                //======================================modify start===============================================
                 //SHI: record the number of received segments (already exclude duplicate segments in isSegmentAcceptable() )
                 //experiments validated: here only exits segments satisfy:(tcpseg->getSequenceNo()  >= state->rcv_nxt)
                 state->rcv_seg++;
@@ -576,7 +576,7 @@ TCPEventCode TCPConnection::processSegment1stThru8th(TCPSegment *tcpseg)
                 //-----------------------------RBD end-------------------------------------
 
 
-                //=====================================================================================
+                //====================================modify end=================================================
 
                 // move the payload data from the TCPSegment payloadList to the receiveQueue payloadList
                 state->rcv_nxt = receiveQueue->insertBytesFromSegment(tcpseg);
@@ -1130,7 +1130,17 @@ TCPEventCode TCPConnection::processSegmentInSynSent(TCPSegment *tcpseg, L3Addres
         //   has been reached, return.
         //"
         EV_INFO << "SYN bit set: sending SYN+ACK\n";
+
+        //SHI:
+        EV_DETAIL << "processSegmentInSynSent: before performing state->snd_max = state->snd_nxt = state->iss;,"
+                <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         state->snd_max = state->snd_nxt = state->iss;
+
+        //SHI:
+         EV_DETAIL << "processSegmentInSynSent: after performing state->snd_max = state->snd_nxt = state->iss;,"
+                 <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
         sendSynAck();
         startSynRexmitTimer();
 

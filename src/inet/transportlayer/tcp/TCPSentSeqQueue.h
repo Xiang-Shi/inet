@@ -95,7 +95,7 @@ public:
    /**
     * Retransmit the head segment of the TCPSentSeqQueue
     */
-   virtual void getHeadSegment(TCPSegment * tcpseg);
+   virtual void getSegment(TCPSegment * tcpseg, uint32 snd_nxt);
 
    /**
     * Returns the number of blocks currently buffered in queue.

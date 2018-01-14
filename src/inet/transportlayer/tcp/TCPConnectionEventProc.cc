@@ -202,10 +202,31 @@ void TCPConnection::process_CLOSE(TCPEventCode& event, TCPCommand *tcpCommand, c
             //"
             if (state->snd_max == sendQueue->getBufferEndSeq()) {
                 EV_DETAIL << "No outstanding SENDs, sending FIN right away, advancing snd_nxt over the FIN\n";
+
+                //SHI:
+                EV_DETAIL << "process_CLOSE: before performing state->snd_nxt = state->snd_max,"
+                        <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
                 state->snd_nxt = state->snd_max;
+
+                //SHI:
+                EV_DETAIL << "process_CLOSE: after performing state->snd_nxt = state->snd_max,"
+                        <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
+
                 sendFin();
                 tcpAlgorithm->restartRexmitTimer();
+
+                //SHI:
+                EV_DETAIL << "process_CLOSE: before performing state->snd_max = ++state->snd_nxt;,"
+                        <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
                 state->snd_max = ++state->snd_nxt;
+
+                //SHI:
+                EV_DETAIL << "process_CLOSE: after performing state->snd_max = ++state->snd_nxt;,"
+                        <<" state->snd_nxt="<<state->snd_nxt<<", state->snd_max="<<state->snd_max<<endl;
+
 
                 if (unackedVector)
                     unackedVector->record(state->snd_max - state->snd_una);

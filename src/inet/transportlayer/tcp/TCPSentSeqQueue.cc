@@ -55,6 +55,9 @@ void TCPSentSeqQueue::discardUpTo(uint32 seqNum)
 {
     ASSERT(seqLE(begin, seqNum) && seqLE(seqNum, end));
 
+    info();
+
+
     if (!sentSeqQueue.empty()) {
         auto i = sentSeqQueue.begin();
 
@@ -70,6 +73,7 @@ void TCPSentSeqQueue::discardUpTo(uint32 seqNum)
 
     begin = seqNum;
 
+    info();
 
     // TESTING queue:
     ASSERT(checkQueue());
@@ -109,18 +113,28 @@ uint32 TCPSentSeqQueue::findSentDataSeq(uint32 fromSeqNum, uint32 toSeqNum)
     return sentSeq;
 
 }
-void TCPSentSeqQueue :: getHeadSegment(TCPSegment * tcpseg)
+void TCPSentSeqQueue :: getSegment(TCPSegment * tcpseg, uint32 snd_nxt)
 {
     bool found = false;
 
     if (!sentSeqQueue.empty())
-    {
-        auto i = sentSeqQueue.front();
-        tcpseg->setSequenceNo(i.beginSeqNum);
-        tcpseg->setPayloadLength(i.endSeqNum - i.beginSeqNum);
-        tcpseg->setSendSeqNo(i.sentSeq);
-        found = true;
-    }
+       {
+               auto i = sentSeqQueue.begin();
+
+               //find the region
+               while ((i != sentSeqQueue.end()) && seqLE(i->endSeqNum, snd_nxt)) //seqLE
+                   i++;
+
+               if (i != sentSeqQueue.end())
+               {
+                   ASSERT(seqLE(i->beginSeqNum, snd_nxt) && seqLess(snd_nxt, i->endSeqNum));
+                   tcpseg->setSequenceNo(i->beginSeqNum);
+                   tcpseg->setPayloadLength(i->endSeqNum - i->beginSeqNum);
+                   tcpseg->setSendSeqNo(i->sentSeq);
+                   found = true;
+               }
+       }
+
     ASSERT(found);
 }
 
@@ -150,6 +164,7 @@ void TCPSentSeqQueue::enqueueSentDataSeq(uint32 fromSeqNum, uint32 toSeqNum , ui
         fromSeqNum = toSeqNum;
     }
 
+
     //ensure the new region is inserted
     ASSERT(fromSeqNum == toSeqNum);
 
@@ -165,6 +180,8 @@ void TCPSentSeqQueue::enqueueSentDataSeq(uint32 fromSeqNum, uint32 toSeqNum , ui
 
     // TESTING queue:
     ASSERT(checkQueue());
+
+    info();
 
 
 

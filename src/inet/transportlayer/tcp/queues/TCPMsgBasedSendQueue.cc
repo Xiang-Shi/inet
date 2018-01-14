@@ -74,7 +74,7 @@ uint32 TCPMsgBasedSendQueue::getBufferEndSeq()
 
 TCPSegment *TCPMsgBasedSendQueue::createSegmentWithBytes(uint32 fromSeq, ulong numBytes)
 {
-    //tcpEV << "sendQ: " << info() << " createSeg(seq=" << fromSeq << " len=" << numBytes << ")\n";
+    EV << "sendQueue:createSegmentWithBytes() " << info() << " createSeg(seq=" << fromSeq << ", len=" << numBytes << ")\n";
 
     ASSERT(seqLE(begin, fromSeq) && seqLE(fromSeq + numBytes, end));
 
