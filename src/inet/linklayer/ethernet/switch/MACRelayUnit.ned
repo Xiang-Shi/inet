@@ -22,6 +22,8 @@ simple MACRelayUnit like IMACRelayUnit
       parameters:
         @display("i=block/switch");
         string macTablePath = default("^.macTable"); // The path to the MACAddressTable module
+        bool PABO = default(true);  //SHI: by default use PABO
+        
        // @signal[maxPBHop](type=long);
        // @signal[totalHopNum](type=long);
         

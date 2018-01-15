@@ -95,6 +95,7 @@ void MACRelayUnit::initialize(int stage)
         numProcessedFrames = numDiscardedFrames = 0;
         addressTable = check_and_cast<IMACAddressTable *>(getParentModule()->getSubmodule("macTable"));
 
+        PABO = par("PABO").boolValue(); //SHI
        // maxPBHopDistr.setNumCells(8);
        // totalHopNumDistr.setCellSize(1);
        // totalHopNumDistr.setRange(0,100);
@@ -143,18 +144,17 @@ void MACRelayUnit::handleAndDispatchFrame(EtherFrame *frame)
 {
 
     int inputport = frame->getArrivalGate()->getIndex();
-    int passBackHop = 0 , maxPassBackHop = 0,  passBackNum = 0 , totalHopNum = 0;
+    int passBackHop = 0, maxPassBackHop = 0, passBackNum = 0, totalHopNum = 0;
 
     passBackHop = frame->getPassBackHop(); //pass back hop of the frame
-    maxPassBackHop = frame->getMaxPassBackHop();//max pass back hop of the frame
+    maxPassBackHop = frame->getMaxPassBackHop(); //max pass back hop of the frame
     passBackNum = frame->getPassBackNum(); //pass back num of the frame
     totalHopNum = frame->getTotalHopNum(); //total hop num of the frame
 
     numProcessedFrames++;
 
     // update address table
-    if(passBackNum == 0)
-    {
+    if (passBackNum == 0) {
         addressTable->updateTableWithAddress(inputport, frame->getSrc());
     }
 
@@ -172,95 +172,134 @@ void MACRelayUnit::handleAndDispatchFrame(EtherFrame *frame)
 
     int outputport = addressTable->getPortForAddress(frame->getDest());
 
-
-/*
-    //no passback
-    if (inputport == outputport) {
-        EV << "Output port is same as input port, " << frame->getFullName()
-               << " dest " << frame->getDest() << ", discarding frame\n";
-        numDiscardedFrames++;
-        delete frame;
-        return;
+    if (!PABO)
+    {    //no passback
+        if (inputport == outputport)
+        {
+            EV << "Output port is same as input port, " << frame->getFullName()
+                      << " dest " << frame->getDest() << ", discarding frame\n";
+            numDiscardedFrames++;
+            delete frame;
+            return;
         }
 
-    if (outputport >= 0) {
-        EV << "Sending frame " << frame << " with dest address " << frame->getDest() << " to port " << outputport << endl;
-        //send frame
-        send(frame, "ifOut", outputport);
-    }
-    else {
-        EV << "Dest address " << frame->getDest() << " unknown, broadcasting frame " << frame << endl;
-        broadcastFrame(frame, inputport);
-    }
-*/
-//---------------------------------------------------------------------------------------------
-    //with passback
-    double probability,dice,temp;
-
-
-    if (outputport >= 0)
+        if (outputport >= 0)
+        {
+            EV << "Sending frame " << frame << " with dest address "
+                      << frame->getDest() << " to port " << outputport << endl;
+            //send frame
+            send(frame, "ifOut", outputport);
+        } else
+        {
+            EV << "Dest address " << frame->getDest()
+                      << " unknown, broadcasting frame " << frame << endl;
+            broadcastFrame(frame, inputport);
+        }
+    } else
     {
+//---------------------------------------------------------------------------------------------
+        //with passback
+        double probability, dice, temp;
 
-        utilization = getPortUtilization(outputport, passBackNum);
-
-
-        //check whether the occupy rate of the queue exceeds a number
-        if(utilization>Threshold)
+        if (outputport >= 0)
         {
 
-            //------------------------probability function: exponential decay----------------------------
-            //original version 1: similar effect between theta and lambda
-            //   temp = pow(exp(A*(passBackHop+1)),(utilization-Threshold));
-            //   probability = (temp - 1)/ (pow(exp(A*(passBackHop+1)),(1-Threshold))-1);
-            //version 2: larger n_p not receive smaller probability
-           //    temp = pow(exp(A*(passBackHop+1)),(Threshold - utilization));
-           //    probability = (temp - 1)/ (pow(exp(A*(passBackHop+1)),(Threshold - 1))-1);
-            //version 3
-            temp = pow(exp(A/(passBackNum+1)),(Threshold - utilization));
-            probability = (temp - 1)/ (pow(exp(A/(passBackNum+1)),(Threshold - 1))-1);
-            //------------------------probability function: exponential decay----------------------------
-            dice = dblrand();
+            utilization = getPortUtilization(outputport, passBackNum);
 
-            EV<<"switch: "<<switchName<<" ,port: "<<outputport<<" passing back frames "<<frame<<"(passBackNum= "<<frame->getPassBackNum()<<" ) ,with probability = "<<probability<<" , dice = "<<dice<<endl;
-
-
-            //PASSING BACK: construct a event occur at probability P, then pass back frame
-            if(dice<=probability) //passbacks
+            //check whether the occupy rate of the queue exceeds a number
+            if (utilization > Threshold)
             {
-                outputport = addressTable->getPortForAddress(frame->getSrc());
-                passBackNum++;
-                frame->setPassBackNum(passBackNum);
 
-                //passBackHop: add when being passed back
-                passBackHop++;
-                frame->setPassBackHop(passBackHop);
+                //------------------------probability function: exponential decay----------------------------
+                //original version 1: similar effect between theta and lambda
+                //   temp = pow(exp(A*(passBackHop+1)),(utilization-Threshold));
+                //   probability = (temp - 1)/ (pow(exp(A*(passBackHop+1)),(1-Threshold))-1);
+                //version 2: larger n_p not receive smaller probability
+                //    temp = pow(exp(A*(passBackHop+1)),(Threshold - utilization));
+                //    probability = (temp - 1)/ (pow(exp(A*(passBackHop+1)),(Threshold - 1))-1);
+                //version 3
+                temp = pow(exp(A / (passBackNum + 1)),
+                        (Threshold - utilization));
+                probability =
+                        (temp - 1)
+                                / (pow(exp(A / (passBackNum + 1)),
+                                        (Threshold - 1)) - 1);
+                //------------------------probability function: exponential decay----------------------------
+                dice = dblrand();
 
-                //record the max hop value of the frame
-                if( maxPassBackHop < passBackHop )
-                {
-                    maxPassBackHop = passBackHop;
-                    frame->setMaxPassBackHop(maxPassBackHop);
+                EV << "switch: " << switchName << " ,port: " << outputport
+                          << " passing back frames " << frame
+                          << "(passBackNum= " << frame->getPassBackNum()
+                          << " ) ,with probability = " << probability
+                          << " , dice = " << dice << endl;
+
+                //PASSING BACK: construct a event occur at probability P, then pass back frame
+                if (dice <= probability) //passbacks
+                        {
+                    outputport = addressTable->getPortForAddress(
+                            frame->getSrc());
+                    passBackNum++;
+                    frame->setPassBackNum(passBackNum);
+
+                    //passBackHop: add when being passed back
+                    passBackHop++;
+                    frame->setPassBackHop(passBackHop);
+
+                    //record the max hop value of the frame
+                    if (maxPassBackHop < passBackHop) {
+                        maxPassBackHop = passBackHop;
+                        frame->setMaxPassBackHop(maxPassBackHop);
+                    }
+
+                    totalHopNum++;
+                    frame->setTotalHopNum(totalHopNum);
+
+                    EV << "Passing back frame " << frame << " with src address "
+                              << frame->getSrc() << " at the "
+                              << frame->getPassBackHop() << " hop "
+                              << " to port " << outputport << endl;
+
+                    //count the number of passed back frames in this switch
+                    PassBackFreq++;
+
+                    //pass back frame
+                    send(frame, "ifOut", outputport);
+
                 }
+                else
+                {
+                    EV << "Sending frame " << frame << " with dest address "
+                              << frame->getDest() << " to port " << outputport
+                              << endl;
 
-                totalHopNum++;
-                frame->setTotalHopNum(totalHopNum);
+                    //passBackHop: only reduce when >=1
+                    if (passBackHop >= 1)
+                    {
+                        passBackHop--;
+                        frame->setPassBackHop(passBackHop);
+                    }
 
-                EV << "Passing back frame " << frame << " with src address " << frame->getSrc()
-                                     <<" at the "<<frame->getPassBackHop() <<" hop "<< " to port " << outputport << endl;
+                    totalHopNum++;
+                    frame->setTotalHopNum(totalHopNum);
 
-                //count the number of passed back frames in this switch
-                PassBackFreq++;
+                    //collect statistics before sending to receiver, move it to the EtherEncap module
+//                if(strcmp(switchName,"etherSwitch7")==0 && outputport == 3)
+//                {
+//                    collectStatistics(frame);
+//                }
 
-                //pass back frame
-                send(frame, "ifOut", outputport);
-
+                    //send frame
+                    send(frame, "ifOut", outputport);
+                }
             }
+
             else
             {
-                EV << "Sending frame " << frame << " with dest address " << frame->getDest() << " to port " << outputport << endl;
-
+                EV << "Sending frame " << frame << " with dest address "
+                          << frame->getDest() << " to port " << outputport
+                          << endl;
                 //passBackHop: only reduce when >=1
-                if(passBackHop >= 1)
+                if (passBackHop >= 1)
                 {
                     passBackHop--;
                     frame->setPassBackHop(passBackHop);
@@ -269,46 +308,23 @@ void MACRelayUnit::handleAndDispatchFrame(EtherFrame *frame)
                 totalHopNum++;
                 frame->setTotalHopNum(totalHopNum);
 
-                //collect statistics before sending to receiver, move it to the EtherEncap module
-//                if(strcmp(switchName,"etherSwitch7")==0 && outputport == 3)
-//                {
-//                    collectStatistics(frame);
-//                }
-
-                //send frame
-                send(frame, "ifOut", outputport);
-            }
-        }
-
-        else
-        {
-            EV << "Sending frame " << frame << " with dest address " << frame->getDest() << " to port " << outputport << endl;
-            //passBackHop: only reduce when >=1
-            if(passBackHop >= 1)
-            {
-                passBackHop--;
-                frame->setPassBackHop(passBackHop);
-            }
-
-            totalHopNum++;
-            frame->setTotalHopNum(totalHopNum);
-
-            //collect statistics before sending to receiver
+                //collect statistics before sending to receiver
 //            if (strcmp(switchName, "etherSwitch7") == 0 && outputport == 3)
 //            {
 //                collectStatistics(frame);
 //            }
 
-            //send frame
-            send(frame, "ifOut", outputport);
+                //send frame
+                send(frame, "ifOut", outputport);
+            }
+        }
+        else
+        {
+            EV << "Dest address " << frame->getDest()
+                      << " unknown, broadcasting frame " << frame << endl;
+            broadcastFrame(frame, inputport);
         }
     }
-    else
-    {
-        EV << "Dest address " << frame->getDest() << " unknown, broadcasting frame " << frame << endl;
-        broadcastFrame(frame, inputport);
-    }
-
 }
 
 

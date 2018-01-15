@@ -39,6 +39,7 @@ class INET_API MACRelayUnit : public cSimpleModule, public ILifecycle
     int PassBackFreq =0;    //the total frequency of passback in this switch;
 
     int numPorts = 0;
+    bool PABO = true; // SHI: default use PABO, can be set in ned value
 
     // Parameters for statistics collection
     double maxUtilOfOutport = 0;

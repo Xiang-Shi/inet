@@ -33,6 +33,12 @@ typedef TCPTahoeRenoFamilyStateVariables TCPTahoeNoCongestionControlStateVariabl
 
 /**
  * Implements Tahoe without fast retransmit and fast recovery.
+ * timeout is set to its upper bound 240s, therefore retransmission timeout is avoided as possible
+ * ssthresh is set to a large value at initiate,
+ *  so basically the sender is always performing slow start without limitation
+ *  there are no other window control mechanisms other than the slow start without limitation
+ *  there are no retransmissions
+ *
  */
 class INET_API TCPTahoeNoCongestionControl : public TCPTahoeRenoFamily
 {
