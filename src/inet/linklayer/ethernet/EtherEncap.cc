@@ -42,6 +42,12 @@ void EtherEncap::initialize()
     totalReversePassedBack = totalFromHigherLayer = totalFromMAC = totalPauseSent = 0;
     useSNAP = par("useSNAP").boolValue();
 
+    totalHopNumDistr.setCellSize(1); //SHI
+    totalHopNumDistr.setRange(0,100);
+
+    bouncedHopNumDistr.setCellSize(1);//SHI
+    bouncedHopNumDistr.setRange(0,10);
+
     WATCH(totalReversePassedBack);
     WATCH(totalFromHigherLayer);
     WATCH(totalFromMAC);
@@ -182,6 +188,8 @@ void EtherEncap::processFrameFromMAC(EtherFrame *frame)
 
             // collect statistics of the frames received in the host
             emit(totalHopSignal, frame->getTotalHopNum());
+            totalHopNumDistr.collect(frame->getTotalHopNum());
+            bouncedHopNumDistr.collect(frame->getPassBackNum());
 
 
         }
@@ -242,5 +250,10 @@ void EtherEncap::handleSendPause(cMessage *msg)
     totalPauseSent++;
 }
 
+void EtherEncap::finish()
+{
+    totalHopNumDistr.recordAs("Total hop num distribution");
+    bouncedHopNumDistr.recordAs("Bounced hop num distribution");
+}
 } // namespace inet
 

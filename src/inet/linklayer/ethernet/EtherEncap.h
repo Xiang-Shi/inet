@@ -45,6 +45,8 @@ class INET_API EtherEncap : public cSimpleModule
     static simsignal_t pauseSentSignal;
     static simsignal_t reversePassbackSignal; //SHI
     static simsignal_t totalHopSignal; //SHI: record the totalHop of received frames
+    cLongHistogram totalHopNumDistr; //SHI: record the same as  totalHop
+    cLongHistogram bouncedHopNumDistr; // SHI: record the bounced num distribution of received frames
     bool useSNAP;    // true: generate EtherFrameWithSNAP, false: generate EthernetIIFrame
     int numOfBouncedPackets =0;//SHI: the total number of received packets which is bounced back all the way to this source host;
 
@@ -57,6 +59,12 @@ class INET_API EtherEncap : public cSimpleModule
     virtual void handleSendPause(cMessage *msg);
 
     virtual void updateDisplayString();
+
+    /**
+     * SHI: Writes statistics.
+     */
+    virtual void finish() override;
+
 };
 
 } // namespace inet
