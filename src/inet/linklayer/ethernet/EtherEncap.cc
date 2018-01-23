@@ -152,9 +152,12 @@ void EtherEncap::processFrameFromMAC(EtherFrame *frame)
     //SHI: to exclude frame destinated for own
     EtherMACBase * mac = (EtherMACBase *) getParentModule()->getSubmodule("mac");
 
+    EV<<"getParentModule()->getNedTypeName()"<<getParentModule()->getNedTypeName()<<endl;
+
     // exclude frame destinated for own, find frames being passed back all the way back to the sender host, and
     // put these frames into sender buffer , queueing for resend
-    if (strcmp(getParentModule()->getParentModule()->getNedTypeName(),"inet.node.inet.StandardHost") == 0
+    if (  (  strcmp(getParentModule()->getParentModule()->getNedTypeName(),"inet.node.inet.StandardHost") == 0
+            || strcmp(getParentModule()->getNedTypeName(),"inet.node.ethernet.EtherHost2")==0  )
            && !mac->getMACAddress().equals(frame->getDest())  && frame->getPassBackNum() > 0 )
     {
         numOfBouncedPackets++;
@@ -176,12 +179,13 @@ void EtherEncap::processFrameFromMAC(EtherFrame *frame)
     }
     else
     {
-        //SHI: check if sender received passed back frames destined for itself, this is bi-directional passback, we don't want this happen
-        if (strcmp(getParentModule()->getParentModule()->getNedTypeName(),"inet.node.inet.StandardHost") == 0)
+        //SHI: check if the sender received passed back frames destined for itself, this is bi-directional passback, we don't want this happen
+        if (strcmp(getParentModule()->getParentModule()->getNedTypeName(),"inet.node.inet.StandardHost") == 0
+                || strcmp(getParentModule()->getNedTypeName(),"inet.node.ethernet.EtherHost2")==0 )
         { // for EtherEncap module in the hosts, when they are processing frames from the network...
 
             if(frame->getPassBackNum() > 0)
-            {//record the number of received bounced frames
+            {//record the number of received bounced frames in each host
                 totalReversePassedBack++;
                 emit(reversePassbackSignal,totalReversePassedBack);
             }

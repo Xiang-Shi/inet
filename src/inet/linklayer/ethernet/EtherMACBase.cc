@@ -463,7 +463,8 @@ bool EtherMACBase::dropFrameNotForUs(EtherFrame *frame)
 
     //SHI: If mac of servers received passed back frame, don't discard
 
-    if(strcmp(getParentModule()->getParentModule()->getNedTypeName(),"inet.node.inet.StandardHost")==0
+    if((  strcmp(getParentModule()->getParentModule()->getNedTypeName(),"inet.node.inet.StandardHost")==0
+          || strcmp(getParentModule()->getNedTypeName(),"inet.node.ethernet.EtherHost2")==0  )
                && frame->getPassBackNum()>0 )
     {
    //     EV_DETAIL<<"EtherMACBase :: dropFrameNotForUs, receiving passed back frame in StandardHost: "<< getParentModule()->getParentModule()->getFullName()
