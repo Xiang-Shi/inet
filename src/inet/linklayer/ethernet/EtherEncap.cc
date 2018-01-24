@@ -152,7 +152,6 @@ void EtherEncap::processFrameFromMAC(EtherFrame *frame)
     //SHI: to exclude frame destinated for own
     EtherMACBase * mac = (EtherMACBase *) getParentModule()->getSubmodule("mac");
 
-    EV<<"getParentModule()->getNedTypeName()"<<getParentModule()->getNedTypeName()<<endl;
 
     // exclude frame destinated for own, find frames being passed back all the way back to the sender host, and
     // put these frames into sender buffer , queueing for resend

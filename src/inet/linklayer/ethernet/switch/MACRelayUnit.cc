@@ -31,7 +31,7 @@ namespace inet {
 Define_Module(MACRelayUnit);
 
 #define Threshold 0.800000
-#define A 50
+#define A 4
 
 #define N 3 //number of upstream switches, varies with topology
 
@@ -55,14 +55,18 @@ double MACRelayUnit::getPortUtilization( int port, int passBackNum )
     int queueLength, queueCapacity, realCapacity;
     double queueUtil;
     DropTailQueue * queue;
+    bool isPassBackQueue = false;
 
     if (passBackNum == 0)
     {
+        EV<<"Check Util of dataQueue:";
         queue = check_and_cast<DropTailQueue *>(getParentModule()->getSubmodule("eth",port)->getSubmodule("queue")->getSubmodule("dataQueue"));
 
     }
     else
     {
+        isPassBackQueue = true;
+        EV<<"Check Util of passBackQueue:";
         queue = check_and_cast<DropTailQueue *>(getParentModule()->getSubmodule("eth",port)->getSubmodule("queue")->getSubmodule("passBackQueue"));
     }
 
@@ -72,10 +76,15 @@ double MACRelayUnit::getPortUtilization( int port, int passBackNum )
 
     queueUtil = (double)(1.0*queueLength)/(queueCapacity);
 
-    //round the util to be 1, to avoid packet loss during parallel decision making of packets
+
+    EV<<"QueueLen = "<<queueLength<<", QueueCapacity = "<<queueCapacity<<", realCapacity = "<<realCapacity
+            <<", queueUtil="<<queueUtil<<endl;
+    //round the util to be 1.0, to avoid packet loss during parallel decision making of packets
     if (queueLength > realCapacity)
     {
-        queueUtil = 1;
+        EV<<"Round the util to be 1.0, to avoid packet loss"<<endl;
+        queueUtil = 1.0;
+        EV<<"After round: queueUtil="<<queueUtil<<endl;
     }
 
     return queueUtil;
@@ -211,7 +220,7 @@ void MACRelayUnit::handleAndDispatchFrame(EtherFrame *frame)
         {
 
             utilization = getPortUtilization(outputport, passBackNum);
-
+            EV<<"getPortUtilization("<<outputport<<", "<<passBackNum<<") = "<<utilization<<endl;
             //check whether the occupy rate of the queue exceeds a number
             if (utilization > Threshold)
             {
@@ -221,12 +230,20 @@ void MACRelayUnit::handleAndDispatchFrame(EtherFrame *frame)
                 //   temp = pow(exp(A*(passBackHop+1)),(utilization-Threshold));
                 //   probability = (temp - 1)/ (pow(exp(A*(passBackHop+1)),(1-Threshold))-1);
                 //version 2:
-                temp = pow(exp(A / (passBackNum + 1)),
-                        (Threshold - utilization));
-                probability =
-                        (temp - 1)
-                                / (pow(exp(A / (passBackNum + 1)),
-                                        (Threshold - 1)) - 1);
+
+               // temp = pow(exp(A / (passBackNum + 1)),
+               //         (Threshold - utilization));
+
+                //might be wrong sometimes, get nan results...
+                // probability =
+                //         (temp - 1)
+                //                 / (pow(exp(A / (passBackNum + 1)),
+                 //                        (Threshold - 1)) - 1);
+
+
+                temp = exp(A*(Threshold - utilization)/(1.0+passBackNum));
+                probability = (temp-1.0)/(exp(A*(Threshold - 1.0)/(1.0+passBackNum))-1.0);
+
                 //------------------------probability function: exponential decay----------------------------
                 dice = dblrand();
 

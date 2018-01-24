@@ -30,8 +30,8 @@ namespace inet {
 
 Define_Module(MACRelayUnit);
 
-#define Threshold 0.700000
-#define A 50
+#define Threshold 0.800000
+#define A 0.1
 
 #define N 3 //number of upstream switches, varies with topology
 
@@ -187,15 +187,21 @@ void MACRelayUnit::handleAndDispatchFrame(EtherFrame *frame)
         {
             EV << "Sending frame " << frame << " with dest address "
                       << frame->getDest() << " to port " << outputport << endl;
+
+            totalHopNum++; //SHI
+            frame->setTotalHopNum(totalHopNum);
+
             //send frame
             send(frame, "ifOut", outputport);
-        } else
+        }
+        else
         {
             EV << "Dest address " << frame->getDest()
                       << " unknown, broadcasting frame " << frame << endl;
             broadcastFrame(frame, inputport);
         }
-    } else
+    }
+    else
     {
 //---------------------------------------------------------------------------------------------
         //with passback
@@ -214,10 +220,7 @@ void MACRelayUnit::handleAndDispatchFrame(EtherFrame *frame)
                 //original version 1: similar effect between theta and lambda
                 //   temp = pow(exp(A*(passBackHop+1)),(utilization-Threshold));
                 //   probability = (temp - 1)/ (pow(exp(A*(passBackHop+1)),(1-Threshold))-1);
-                //version 2: larger n_p not receive smaller probability
-                //    temp = pow(exp(A*(passBackHop+1)),(Threshold - utilization));
-                //    probability = (temp - 1)/ (pow(exp(A*(passBackHop+1)),(Threshold - 1))-1);
-                //version 3
+                //version 2:
                 temp = pow(exp(A / (passBackNum + 1)),
                         (Threshold - utilization));
                 probability =
